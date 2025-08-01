@@ -7,32 +7,17 @@ def run_backtest(
     data: pd.DataFrame,
     cash: int,
     commission: float,
-    params: dict
+    params: dict,
+    asset_name: str # NEW: To pass to the reporter
 ) -> pd.Series:
-    """
-    Initializes and runs a backtest with strategy-specific parameters.
-
-    Args:
-        strategy (Strategy): The strategy class to be tested.
-        data (pd.DataFrame): The OHLCV data for the backtest.
-        cash (int): The initial cash amount.
-        commission (float): The commission rate for trades.
-        params (dict): A dictionary of parameters to pass to the strategy.
-
-    Returns:
-        pd.Series: A pandas Series containing the backtest statistics.
-    """
-    print(f"--- Running Backtest for {strategy.__name__} with params: {params} ---")
+    print(f"\n--- Running Backtest for {strategy.__name__} on {asset_name} ---")
     
     bt = Backtest(data, strategy, cash=cash, commission=commission)
-    
-    # The backtesting library automatically uses the keys from 'params'
-    # to set the strategy's attributes (e.g., n1, n2).
     stats = bt.run(**params)
     
     print("\n--- Backtest Results ---")
     print(stats)
     
-    generate_report(bt, stats, strategy_name=strategy.__name__)
+    generate_report(bt, stats, strategy_name=strategy.__name__, asset_name=asset_name)
     
     return stats

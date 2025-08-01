@@ -1,13 +1,13 @@
 # --- General Backtest Settings ---
 backtest_settings:
-  data_source: 'data/AAPL_1D_2021-08-01-2025-04-03.csv' # Path to the data file
-  strategy_file: 'sma_cross_strategy'   # The name of the strategy file (without .py)
-  strategy_name: 'SmaCross'             # The name of the strategy class
+  data_source: 'data/test_data/'         # <<< CHANGE: Path to a FOLDER or FILE with historical data
+  backtest_mode: 'single'               # 'single' or 'portfolio'
+  strategy_file: 'sma_cross_strategy'
+  strategy_name: 'SmaCross'
   initial_cash: 100000
   commission_pct: 0.002
 
 # --- Strategy-Specific Parameters ---
-# These will be passed directly to the strategy class.
 strategy_params:
-  n1: 15  # Let's change this from the default to see it work
+  n1: 15
   n2: 30
