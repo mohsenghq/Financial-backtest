@@ -1,8 +1,9 @@
 pandas
-quantstats>=0.0.69
-scikit-learn>=1.0.0
+PyYAML
 backtesting
 sambo
 pytest
 pandas-ta
 numpy==1.26
+quantstats>=0.0.69
+scikit-learn>=1.0.0
