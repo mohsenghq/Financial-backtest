@@ -1,13 +1,26 @@
 # --- General Backtest Settings ---
 backtest_settings:
-  data_source: 'data/test_data/'         # <<< CHANGE: Path to a FOLDER or FILE with historical data
-  backtest_mode: 'single'               # 'single' or 'portfolio'
-  strategy_file: 'sma_cross_strategy'
-  strategy_name: 'SmaCross'
+  data_source: './data/test_data/'
+  backtest_mode: 'single'
   initial_cash: 100000
   commission_pct: 0.002
 
-# --- Strategy-Specific Parameters ---
-strategy_params:
-  n1: 15
-  n2: 30
+# --- Strategies to Run ---
+# The hyphen (-) is crucial. It creates a list of items.
+strategies:
+  # - name: 'SmaCross'
+  #   file: 'sma_cross_strategy'
+  #   params:
+  #     n1: 10
+  #     n2: 25
+
+  # - name: 'RsiMomentum'
+  #   file: 'rsi_momentum_strategy'
+  #   params:
+  #     upper_bound: 70
+  #     lower_bound: 30
+  #     rsi_period: 14
+
+  - name: 'BuyAndHold'
+    file: 'buy_and_hold_strategy'
+    params: {}

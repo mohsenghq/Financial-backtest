@@ -2,20 +2,21 @@ from backtesting import Strategy
 
 class BuyAndHold(Strategy):
     """
-    A simple strategy that buys on the first data point and holds until the end.
-    This serves as a benchmark for other strategies.
+    A simple strategy that buys on the first data point it receives
+    and holds until the end. This serves as a benchmark.
     """
     def init(self):
         """
-        Called once for the backtest to initialize.
+        Initialize a flag to track if we have already bought.
         """
-        # Nothing to initialize.
-        pass
+        self.bought = False
 
     def next(self):
         """
-        Called on each candlestick of the data.
+        On the first bar we process, buy and set the flag.
         """
-        # If it's the first bar and we haven't bought yet, buy.
-        if len(self.data.Close) == 1:
+        # If we haven't bought yet, buy on the current bar.
+        if not self.bought:
             self.buy()
+            # Set the flag to True to prevent further buying.
+            self.bought = True

@@ -11,8 +11,8 @@ def generate_report(
     output_dir: str = "results"
 ):
     """
-    Generates and saves a full backtest report, including a
-    comparison against a Buy & Hold benchmark.
+    Generates and saves a full backtest report. If the strategy is not
+    'BuyAndHold', it includes a comparison against a Buy & Hold benchmark.
     """
     print(f"\n--- Generating Full Report for {asset_name} ---")
     
@@ -20,23 +20,29 @@ def generate_report(
     os.makedirs(report_folder, exist_ok=True)
     
     equity_curve = stats['_equity_curve']['Equity']
-    
-    # --- Calculate Benchmark Returns (Buy & Hold) ---
-    close_prices = bt._data.Close
-    benchmark_returns = close_prices.pct_change().fillna(0)
-    
-    # --- THE FIX: Rename the benchmark Series for the plot legend ---
-    benchmark_returns.name = "Buy and Hold"
-    
-    # --- Generate QuantStats HTML Report with Benchmark ---
     report_path = os.path.join(report_folder, "report.html")
+
+    # --- THE FIX: Conditional Benchmark ---
+    # Only add the benchmark if the strategy is NOT BuyAndHold
+    if strategy_name == 'BuyAndHold':
+        qs.reports.html(
+            returns=equity_curve,
+            output=report_path,
+            title=f'{strategy_name} Performance on {asset_name}'
+        )
+    else:
+        # For all other strategies, calculate and add the benchmark
+        close_prices = bt._data.Close
+        benchmark_returns = close_prices.pct_change().fillna(0)
+        benchmark_returns.name = "Buy and Hold"
+        
+        qs.reports.html(
+            returns=equity_curve,
+            benchmark=benchmark_returns,
+            output=report_path,
+            title=f'{strategy_name} vs. Buy & Hold on {asset_name}'
+        )
     
-    qs.reports.html(
-        returns=equity_curve,
-        benchmark=benchmark_returns,
-        output=report_path,
-        title=f'{strategy_name} vs. Buy & Hold on {asset_name}'
-    )
     print(f"QuantStats report saved to: {report_path}")
     
     # --- Save the backtesting.py plot ---
