@@ -10,3 +10,4 @@ numpy
 quantstats>=0.0.69
 scikit-learn>=1.0.0
 IPython
+google-genai

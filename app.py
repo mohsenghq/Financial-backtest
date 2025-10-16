@@ -1,3 +1,6 @@
+# run with:
+# python -m streamlit run app.py
+
 import streamlit as st
 import os
 import importlib
@@ -83,14 +86,18 @@ if not available_assets:
     st.error(f"No asset data found in the `{data_source_path}` directory.")
     st.stop()
 
-st.sidebar.header("Run New Backtest")
+# # Sidebar Sections
+# st.sidebar.header("Run New Backtest")
+# st.sidebar.markdown("---")
+# st.sidebar.page_link("pages/2_Add_Strategy_AI.py", label="Add new strategy with AI 🤖")
+
 col1, col2 = st.columns([1, 2])
 
 with col1:
     st.subheader("1. Select Strategy")
     selected_strategy_name = st.selectbox(
         "Choose a strategy",
-        options=list(available_strategies.keys())
+        options=list(available_strategies.keys()),
     )
     strategy_info = available_strategies[selected_strategy_name]
 
