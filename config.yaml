@@ -21,6 +21,11 @@ strategies:
   #     lower_bound: 30
   #     rsi_period: 14
 
-  - name: 'BuyAndHold'
-    file: 'buy_and_hold_strategy'
-    params: {}
+  # - name: 'BuyAndHold'
+  #   file: 'buy_and_hold_strategy'
+  #   params: {}
+
+  - name: 'PriceLevelStrategy'
+    file: 'weekly_strategy'
+    params:
+      lookback_period: 7
