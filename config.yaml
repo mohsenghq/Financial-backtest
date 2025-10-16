@@ -1,6 +1,6 @@
 # --- General Backtest Settings ---
 backtest_settings:
-  data_source: './data/test_data/'
+  data_source: './data/'
   backtest_mode: 'single'
   initial_cash: 100000
   commission_pct: 0.002
