@@ -5,6 +5,7 @@ import os
 from backtest_engine.data_loader import load_data
 from backtest_engine.feature_generator import add_features
 from backtest_engine.runner import run_backtest
+from tools.optimizer import StrategyOptimizer
 
 def save_results_for_dashboard(stats: pd.Series, strategy_name: str, asset_name: str):
     """Saves the necessary backtest output for the dashboard."""
@@ -52,13 +53,26 @@ def run_backtests_from_config(config: dict):
             try:
                 strategy_file = strategy_config['file']
                 params = strategy_config.get('params', {})
+                optimize = strategy_config.get('optimize', False)
+                param_ranges = strategy_config.get('param_ranges', {})
 
-                # Import the strategy class
                 module = importlib.import_module(f"strategies.{strategy_file}")
                 StrategyClass = getattr(module, strategy_name)
 
-                # Prepare data and run backtest
                 features_df = add_features(market_data.copy())
+                optimizer = StrategyOptimizer(StrategyClass, features_df)
+
+                if optimize:
+                    print(f"Optimizing {strategy_name} on {asset_name}...")
+                    best_params = optimizer.optimize(param_ranges)
+                    optimizer.set_optimized_params(strategy_name, asset_name, best_params)
+                    params = best_params
+                else:
+                    optimized_params = optimizer.get_optimized_params(strategy_name, asset_name)
+                    if optimized_params:
+                        print(f"Using optimized parameters for {strategy_name} on {asset_name}: {optimized_params}")
+                        params = optimized_params
+
                 stats = run_backtest(
                     strategy=StrategyClass, data=features_df, cash=settings['initial_cash'],
                     commission=settings['commission_pct'], params=params, asset_name=asset_name

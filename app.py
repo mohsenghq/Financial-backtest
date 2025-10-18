@@ -102,21 +102,42 @@ with col1:
     strategy_info = available_strategies[selected_strategy_name]
 
     st.subheader("2. Configure Parameters")
+
+    optimize = st.checkbox("Optimize", value=True, disabled=not bool(strategy_info['params']))
+
     params = {}
+    param_ranges = {}
     if strategy_info['params']:
-        for param, default_value in strategy_info['params'].items():
-            if isinstance(default_value, int):
-                params[param] = st.number_input(
-                    f"Parameter: {param}",
-                    value=default_value,
-                    step=1
-                )
-            elif isinstance(default_value, float):
-                params[param] = st.number_input(
-                    f"Parameter: {param}",
-                    value=default_value,
-                    format="%.2f"
-                )
+        if optimize:
+            st.markdown("Define optimization ranges:")
+            for param, default_value in strategy_info['params'].items():
+                col_start, col_end, col_step = st.columns(3)
+                step = 1 if isinstance(default_value, int) else 0.1
+                with col_start:
+                    start_val = st.number_input(f"{param} start", value=0.0, step=step, key=f"{param}_start")
+                with col_end:
+                    end_val = st.number_input(f"{param} end", value=float(default_value * 3), step=step, key=f"{param}_end")
+                with col_step:
+                    step_val = st.number_input(f"{param} step", value=step, step=step, key=f"{param}_step")
+
+                # Generate a range-like list for floats
+                import numpy as np
+                param_ranges[param] = list(np.arange(start_val, end_val + step_val, step_val))
+
+        else:
+            for param, default_value in strategy_info['params'].items():
+                if isinstance(default_value, int):
+                    params[param] = st.number_input(
+                        f"Parameter: {param}",
+                        value=default_value,
+                        step=1
+                    )
+                elif isinstance(default_value, float):
+                    params[param] = st.number_input(
+                        f"Parameter: {param}",
+                        value=default_value,
+                        format="%.2f"
+                    )
     else:
         st.info("This strategy has no configurable parameters.")
 
@@ -143,7 +164,9 @@ if run_button:
             'strategies': [{
                 'name': selected_strategy_name,
                 'file': strategy_info['file'],
-                'params': params
+                'params': params,
+                'optimize': optimize,
+                'param_ranges': param_ranges
             }]
         }
 
