@@ -112,11 +112,11 @@ with col1:
             st.markdown("Define optimization ranges:")
             for param, default_value in strategy_info['params'].items():
                 col_start, col_end, col_step = st.columns(3)
-                step = 1 if isinstance(default_value, int) else 0.1
+                step = 1.0 if isinstance(default_value, int) else 0.1
                 with col_start:
                     start_val = st.number_input(f"{param} start", value=0.0, step=step, key=f"{param}_start")
                 with col_end:
-                    end_val = st.number_input(f"{param} end", value=float(default_value * 3), step=step, key=f"{param}_end")
+                    end_val = st.number_input(f"{param} end", value=float(default_value * 10), step=step, key=f"{param}_end")
                 with col_step:
                     step_val = st.number_input(f"{param} step", value=step, step=step, key=f"{param}_step")
 
@@ -165,7 +165,7 @@ if run_button:
                 'name': selected_strategy_name,
                 'file': strategy_info['file'],
                 'params': params,
-                'optimize': optimize,
+                'optimize': optimize if strategy_info['params'] else False,
                 'param_ranges': param_ranges
             }]
         }
