@@ -17,6 +17,6 @@ class BuyAndHold(Strategy):
         """
         # If we haven't bought yet, buy on the current bar.
         if not self.bought:
-            self.buy()
+            self.buy(size=0.9999999)
             # Set the flag to True to prevent further buying.
             self.bought = True
