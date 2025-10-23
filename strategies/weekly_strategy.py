@@ -32,6 +32,9 @@ class PriceLevelStrategy(Strategy):
         """
         Initialize the indicators for the dynamic price levels.
         """
+        if self.lookback_period <= 0:
+            raise ValueError("Lookback period must be greater than 0.")
+        
         # Calculate the rolling min and max over the lookback period
         self.min_price = self.I(rolling_min, self.data.Close, self.lookback_period)
         self.max_price = self.I(rolling_max, self.data.Close, self.lookback_period)
@@ -50,6 +53,10 @@ class PriceLevelStrategy(Strategy):
         """
         Define the trading logic based on the price crossing key levels.
         """
+        # If the price range over the lookback period is zero, do nothing.
+        if self.max_price[-1] - self.min_price[-1] == 0:
+            return
+
         # Entry condition: If there's no open position, check for a buy signal.
         # A buy signal occurs if the price crosses BELOW the 25% level,
         # suggesting the asset is oversold relative to its recent range.

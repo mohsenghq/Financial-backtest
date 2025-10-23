@@ -2,7 +2,7 @@
 backtest_settings:
   data_source: './data/'
   backtest_mode: 'single'
-  initial_cash: 100000
+  initial_cash: 1000000
   commission_pct: 0.002
 
 # --- Strategies to Run ---

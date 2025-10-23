@@ -8,12 +8,6 @@ def atr_func(high: np.ndarray, low: np.ndarray, close: np.ndarray, n: int) -> np
     Calculates the Average True Range (ATR) indicator.
     This is a custom implementation as required.
     """
-    if not isinstance(high, np.ndarray):
-        high = np.array(high)
-    if not isinstance(low, np.ndarray):
-        low = np.array(low)
-    if not isinstance(close, np.ndarray):
-        close = np.array(close)
 
     tr = np.full_like(close, np.nan)
     atr = np.full_like(close, np.nan)
@@ -70,6 +64,7 @@ class FVGStrategy(Strategy):
     sl_atr_multiplier = 2.0
     tp_atr_multiplier = 4.0
     fvg_expiry = 15  # FVG is considered valid for this many bars after creation
+    risk_percentage = 0.02 # Max percentage of equity to risk per trade
 
     def init(self):
         """
@@ -165,19 +160,96 @@ class FVGStrategy(Strategy):
             if fvg['type'] == 'bullish':
                 # Check for pullback into the FVG zone
                 if len(self.data.Close) > 3 and self.data.Low[-2] > fvg['top'] and self.data.Low[-1] <= fvg['top']:
-                    sl = self.data.Close[-1] - self.atr[-1] * self.sl_atr_multiplier
-                    tp = self.data.Close[-1] + self.atr[-1] * self.tp_atr_multiplier
-                    self.buy(sl=sl, tp=tp)
-                    fvg['used'] = True  # Mark FVG as used
-                    break  # Exit loop after placing a trade
+                    entry_price = self.data.Close[-1]
+                    sl_distance = self.atr[-1] * self.sl_atr_multiplier
+                    
+                    # Ensure sl_distance is positive to avoid SL = entry_price
+                    if sl_distance <= 0:
+                        sl_distance = entry_price * 0.001 # A small percentage of price
+
+                    sl = entry_price - sl_distance
+                    tp = entry_price + (self.atr[-1] * self.tp_atr_multiplier)
+
+                    # Ensure SL and TP are positive
+                    sl = max(1e-6, sl)
+                    tp = max(1e-6, tp)
+
+                    # Calculate position size based on risk percentage
+                    risk_amount = self.equity * self.risk_percentage
+                    
+                    # Ensure sl_distance is not zero or too small to prevent division by zero or excessively large position sizes
+                    if sl_distance <= 1e-6: # Use a small threshold instead of 0
+                        position_size = 0 # Cannot calculate a meaningful position size
+                    else:
+                        calculated_units = risk_amount / sl_distance
+
+                        if calculated_units <= 0:
+                            position_size = 0
+                        elif calculated_units < 1:
+                            # If calculated units is less than 1, backtesting.py will interpret it as a fraction of cash.
+                            # We need to convert it to a fraction of equity that represents the same value.
+                            value_of_units = calculated_units * entry_price
+                            if self.equity > 0:
+                                position_size = value_of_units / self.equity
+                            else:
+                                position_size = 0 # Cannot trade if equity is zero or negative
+                        else:
+                            # If calculated units is >= 1, it will be interpreted as number of units.
+                            position_size = calculated_units
+
+                    # Ensure position_size is positive and a reasonable value
+                    if position_size > 0:
+                        # print(f"Buying {position_size} units at {entry_price} with SL {sl} and TP {tp}")
+                        self.buy(size=round(position_size, 0), sl=sl, tp=tp)
+                        fvg['used'] = True  # Mark FVG as used
+                        break  # Exit loop after placing a trade
 
             # Bearish Entry Condition:
             # Price was previously below the FVG and the current candle's high has entered it.
             elif fvg['type'] == 'bearish':
                 # Check for pullback into the FVG zone
                 if len(self.data.Close) > 3 and self.data.High[-2] < fvg['bottom'] and self.data.High[-1] >= fvg['bottom']:
-                    sl = self.data.Close[-1] + self.atr[-1] * self.sl_atr_multiplier
-                    tp = self.data.Close[-1] - self.atr[-1] * self.tp_atr_multiplier
-                    self.sell(sl=sl, tp=tp)
-                    fvg['used'] = True  # Mark FVG as used
-                    break  # Exit loop after placing a trade
+                    entry_price = self.data.Close[-1]
+                    sl_distance = self.atr[-1] * self.sl_atr_multiplier
+
+                    # Ensure sl_distance is positive to avoid SL = entry_price
+                    if sl_distance <= 0:
+                        sl_distance = entry_price * 0.001 # A small percentage of price
+
+                    sl = entry_price + sl_distance
+                    tp = entry_price - (self.atr[-1] * self.tp_atr_multiplier)
+
+                    # Ensure SL and TP are positive
+                    sl = max(1e-6, sl)
+                    tp = max(1e-6, tp)
+
+                    # Calculate position size based on risk percentage
+                    risk_amount = self.equity * self.risk_percentage
+                    
+                    # Ensure sl_distance is not zero or too small to prevent division by zero or excessively large position sizes
+                    if sl_distance <= 1e-6: # Use a small threshold instead of 0
+                        position_size = 0 # Cannot calculate a meaningful position size
+                    else:
+                        calculated_units = risk_amount / sl_distance
+
+                        if calculated_units <= 0:
+                            position_size = 0
+                        elif calculated_units < 1:
+                            # If calculated units is less than 1, backtesting.py will interpret it as a fraction of cash.
+                            # We need to convert it to a fraction of equity that represents the same value.
+                            value_of_units = calculated_units * entry_price
+                            if self.equity > 0:
+                                position_size = value_of_units / self.equity
+                            else:
+                                position_size = 0 # Cannot trade if equity is zero or negative
+                        else:
+                            # If calculated units is >= 1, it will be interpreted as number of units.
+                            position_size = calculated_units
+
+                    # Ensure position_size is positive and a reasonable value
+                    if position_size > 0:
+                        # print(f"Selling {position_size} units at {entry_price} with SL {sl} and TP {tp}")
+
+                        self.sell(size=round(position_size, 0), sl=sl, tp=tp)
+                        fvg['used'] = True  # Mark FVG as used
+                        break  # Exit loop after placing a trade

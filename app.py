@@ -7,6 +7,9 @@ import importlib
 import inspect
 from main import run_backtests_from_config
 import yaml
+import json
+import warnings
+warnings.filterwarnings("ignore")
 
 # --- App Configuration ---
 st.set_page_config(
@@ -61,9 +64,19 @@ def get_available_assets(data_path):
                 assets.append(filename.replace('.csv', ''))
     return sorted(assets)
 
+def get_optimized_params(strategy_name, asset_name):
+    """Loads optimized parameters for a given strategy and asset."""
+    opt_params_path = 'results/optimized_params.json'
+    if os.path.exists(opt_params_path):
+        with open(opt_params_path, 'r') as f:
+            all_opt_params = json.load(f)
+            return all_opt_params.get(strategy_name, {}).get(asset_name)
+    return None
+
 # --- Main UI ---
 st.title("⚙️ Backtest Configuration")
 st.write("Select a strategy, adjust its parameters, choose assets, and run a new backtest.")
+
 
 # Load base config to get data path
 try:
@@ -95,98 +108,182 @@ col1, col2 = st.columns([1, 2])
 
 with col1:
     st.subheader("1. Select Strategy")
-    selected_strategy_name = st.selectbox(
-        "Choose a strategy",
-        options=list(available_strategies.keys()),
+    
+    strategy_options = ["All"] + list(available_strategies.keys())
+    selected_strategy_names = st.multiselect(
+        "Choose one or more strategies",
+        options=strategy_options,
+        default="All"
     )
-    strategy_info = available_strategies[selected_strategy_name]
 
-    st.subheader("2. Configure Parameters")
+    if "All" in selected_strategy_names:
+        selected_strategy_names = list(available_strategies.keys())
 
-    optimize = st.checkbox("Optimize", value=True, disabled=not bool(strategy_info['params']))
-
-    params = {}
-    param_ranges = {}
-    if strategy_info['params']:
-        if optimize:
-            st.markdown("Define optimization ranges:")
-            for param, default_value in strategy_info['params'].items():
-                col_start, col_end, col_step = st.columns(3)
-                step = 1.0 if isinstance(default_value, int) else 0.1
-                with col_start:
-                    start_val = st.number_input(f"{param} start", value=0.0, step=step, key=f"{param}_start")
-                with col_end:
-                    end_val = st.number_input(f"{param} end", value=float(default_value * 10), step=step, key=f"{param}_end")
-                with col_step:
-                    step_val = st.number_input(f"{param} step", value=step, step=step, key=f"{param}_step")
-
-                # Generate a range-like list for floats
-                import numpy as np
-                param_ranges[param] = list(np.arange(start_val, end_val + step_val, step_val))
-
-        else:
-            for param, default_value in strategy_info['params'].items():
-                if isinstance(default_value, int):
-                    params[param] = st.number_input(
-                        f"Parameter: {param}",
-                        value=default_value,
-                        step=1
-                    )
-                elif isinstance(default_value, float):
-                    params[param] = st.number_input(
-                        f"Parameter: {param}",
-                        value=default_value,
-                        format="%.2f"
-                    )
-    else:
-        st.info("This strategy has no configurable parameters.")
-
-with col2:
-    st.subheader("3. Select Assets")
+    st.subheader("2. Select Assets")
+    asset_options = ["All"] + available_assets
     selected_assets = st.multiselect(
         "Choose one or more assets to run the backtest on",
-        options=available_assets,
-        default=available_assets[0] if available_assets else []
+        options=asset_options,
+        default="All"
     )
 
+    if "All" in selected_assets:
+        selected_assets = available_assets
+
+    # For the parameter configuration, we'll just show the first selected strategy's params
+    # This is a simplification for the UI. The backtest will use default params for others.
+    if selected_strategy_names:
+        first_strategy_name = selected_strategy_names[0]
+        strategy_info = available_strategies[first_strategy_name]
+        if len(selected_strategy_names) > 1:
+            st.info(f"Parameter configuration is shown for '{first_strategy_name}'.\n\nOther selected strategies will use their default parameters.")
+    else:
+        strategy_info = {"params": {}} # Empty dict to prevent errors
+
+    st.subheader("3. Configure Parameters")
+
+    # --- Optimization Checkbox ---
+    # It's always available, but its behavior changes based on selection.
+    optimize = st.checkbox("Optimize", value=True, disabled=not any(s['params'] for s in available_strategies.values()))
+
+    # --- Parameter Configuration UI ---
+    # This section is now more dynamic based on the selections and optimize flag.
+    params = {}
+    param_ranges = {}
+
+    # Case 1: Single strategy selected -> Full interactive UI
+    if len(selected_strategy_names) == 1:
+        selected_asset = selected_assets[0] if len(selected_assets) == 1 else None
+        
+        # Load optimized params if not optimizing and a single asset is selected
+        loaded_opt_params = {}
+        if not optimize and selected_asset:
+            loaded_opt_params = get_optimized_params(first_strategy_name, selected_asset) or {}
+            if loaded_opt_params:
+                st.info(f"Loaded optimized parameters for {selected_asset}.")
+
+        if strategy_info['params']:
+            if optimize:
+                st.markdown("Define optimization ranges:")
+                for param, default_value in strategy_info['params'].items():
+                    col_start, col_end, col_step = st.columns(3)
+                    if isinstance(default_value, int):
+                        step = 1
+                        with col_start:
+                            start_val = st.number_input(f"{param} start", value=1, min_value=1, step=step, key=f"{param}_start")
+                        with col_end:
+                            end_val = st.number_input(f"{param} end", value=default_value * 10, min_value=1, step=step, key=f"{param}_end")
+                        with col_step:
+                            step_val = st.number_input(f"{param} step", value=step, min_value=1, step=step, key=f"{param}_step")
+                        import numpy as np
+                        param_ranges[param] = list(np.arange(start_val, end_val + step_val, step_val).astype(int))
+                    else: # float
+                        step = 0.1
+                        with col_start:
+                            start_val = st.number_input(f"{param} start", value=0.1, min_value=0.1, step=step, key=f"{param}_start")
+                        with col_end:
+                            end_val = st.number_input(f"{param} end", value=float(default_value * 10), min_value=0.1, step=step, key=f"{param}_end")
+                        with col_step:
+                            step_val = st.number_input(f"{param} step", value=step, min_value=0.1, step=step, key=f"{param}_step")
+                        import numpy as np
+                        param_ranges[param] = list(np.arange(start_val, end_val + step_val, step_val))
+            else: # Not optimizing
+                for param, default_value in strategy_info['params'].items():
+                    value = loaded_opt_params.get(param, default_value)
+                    if isinstance(default_value, int):
+                        params[param] = st.number_input(f"Parameter: {param}", value=value, min_value=1, step=1)
+                    else: # float
+                        params[param] = st.number_input(f"Parameter: {param}", value=value, min_value=0.1, format="%.2f")
+        else:
+            st.info("This strategy has no configurable parameters.")
+
+    # Case 2: Multiple strategies selected
+    else:
+        if optimize:
+            st.info("Default optimization ranges (1x to 10x the default parameter value) will be used for all selected strategies.")
+            # The logic to create these ranges will be handled during config construction.
+        else:
+            st.info("Strategies will run with their default parameters.")
+
+
+with col2:
     st.subheader("4. Execute Backtest")
     run_button = st.button("🚀 Run Backtest", type="primary", use_container_width=True)
 
 # --- Execution Logic ---
 if run_button:
-    if not selected_strategy_name or not selected_assets:
-        st.warning("Please select a strategy and at least one asset.")
+    if not selected_strategy_names or not selected_assets:
+        st.warning("Please select at least one strategy and at least one asset.")
     else:
         # 1. Construct the configuration for the backtest run
+        strategies_to_run = []
+        for strategy_name in selected_strategy_names:
+            strategy_info = available_strategies[strategy_name]
+            
+            current_params = {}
+            current_param_ranges = {}
+            current_optimize = optimize
+
+            # If multiple strategies are selected, we might use default optimization ranges
+            if len(selected_strategy_names) > 1:
+                if current_optimize:
+                    # Generate default optimization ranges
+                    for param, default_value in strategy_info['params'].items():
+                        if isinstance(default_value, int):
+                            start_val = 1
+                            end_val = default_value * 10
+                            step_val = 1
+                            import numpy as np
+                            current_param_ranges[param] = list(np.arange(start_val, end_val + step_val, step_val).astype(int))
+                        elif isinstance(default_value, float):
+                            start_val = 0.1
+                            end_val = default_value * 10
+                            step_val = 0.1
+                            import numpy as np
+                            current_param_ranges[param] = list(np.arange(start_val, end_val + step_val, step_val))
+                else:
+                    # Use default params (which is an empty dict, so the strategy uses its class defaults)
+                    pass
+            
+            # If only one strategy is selected, use the values from the UI
+            else:
+                current_params = params
+                current_param_ranges = param_ranges
+
+            strategies_to_run.append({
+                'name': strategy_name,
+                'file': strategy_info['file'],
+                'params': current_params,
+                'optimize': current_optimize if strategy_info['params'] else False,
+                'param_ranges': current_param_ranges
+            })
+
         run_config = {
             'backtest_settings': base_config['backtest_settings'],
             'assets_to_run': selected_assets,
-            'strategies': [{
-                'name': selected_strategy_name,
-                'file': strategy_info['file'],
-                'params': params,
-                'optimize': optimize if strategy_info['params'] else False,
-                'param_ranges': param_ranges
-            }]
+            'strategies': strategies_to_run
         }
 
         # 2. Execute the backtest
         st.write("---")
-        st.info(f"Running **{selected_strategy_name}** on **{', '.join(selected_assets)}**...")
+        st.info(f"Running **{', '.join(selected_strategy_names)}** on **{', '.join(selected_assets)}**...")
 
-        progress_bar = st.progress(0, text="Backtest in progress...")
+        log_placeholder = st.empty()
+        log_messages = []
+        def streamlit_log(message):
+            log_messages.append(message)
+            log_placeholder.code("\n".join(log_messages))
 
         try:
             # This is where the main logic is called
-            run_backtests_from_config(run_config)
+            errors = run_backtests_from_config(run_config, log_callback=streamlit_log)
 
-            progress_bar.progress(100, text="Backtest complete!")
-            st.success("✅ Backtest finished successfully!")
-            st.info("Navigate to the 'Results Dashboard' page to view the output.")
-
-            # Use st.cache_data.clear() to force the results page to reload its data
-            st.cache_data.clear()
+            if errors:
+                st.error("Backtest completed with errors.")
+            else:
+                st.success("✅ Backtest finished successfully!")
+                st.info("Navigate to the 'Results Dashboard' page to view the output.")
+                st.cache_data.clear()
 
         except Exception as e:
-            st.error(f"An error occurred during the backtest: {e}")
-            progress_bar.progress(100, text="Backtest failed.")
+            st.error(f"An unexpected error occurred: {e}")

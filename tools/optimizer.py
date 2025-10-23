@@ -25,14 +25,16 @@ class StrategyOptimizer:
         `param_grid` should be a dictionary of parameters to optimize,
         e.g., {'n1': range(10, 31, 5), 'n2': range(20, 61, 10)}
         """
-        bt = Backtest(self.data, self.strategy, cash=10000, commission=.002)
+        bt = Backtest(self.data, self.strategy, cash=1000000, commission=.002)
         stats, heatmap = bt.optimize(
             maximize='Sharpe Ratio',
             **param_grid,
+            method='sambo',
+            max_tries=1000,
             return_heatmap=True
         )
         best_params = stats._strategy._params
-        return best_params
+        return best_params, heatmap
 
     def get_optimized_params(self, strategy_name, data_name):
         return self.optimized_params.get(strategy_name, {}).get(data_name)
