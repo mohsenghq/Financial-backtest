@@ -164,38 +164,62 @@ with col1:
             if loaded_opt_params:
                 st.info(f"Loaded optimized parameters for {selected_asset}.")
 
+        strategy_class = strategy_info.get('class')
+        opt_ranges = {}
+        if strategy_class and hasattr(strategy_class, 'get_optimization_ranges'):
+            opt_ranges = strategy_class.get_optimization_ranges()
+
         if strategy_info['params']:
             if optimize:
                 st.markdown("Define optimization ranges:")
                 for param, default_value in strategy_info['params'].items():
+                    param_range = opt_ranges.get(param, {})
                     col_start, col_end, col_step = st.columns(3)
+
                     if isinstance(default_value, int):
-                        step = 1
+                        min_val = param_range.get('min', 1)
+                        max_val = param_range.get('max', default_value * 10)
+                        step = param_range.get('step', 1)
+
                         with col_start:
-                            start_val = st.number_input(f"{param} start", value=1, min_value=1, step=step, key=f"{param}_start")
+                            start_val = st.number_input(f"{param} start", value=min_val, min_value=min_val, step=step, key=f"{param}_start")
                         with col_end:
-                            end_val = st.number_input(f"{param} end", value=default_value * 10, min_value=1, step=step, key=f"{param}_end")
+                            end_val = st.number_input(f"{param} end", value=max_val, min_value=min_val, step=step, key=f"{param}_end")
                         with col_step:
-                            step_val = st.number_input(f"{param} step", value=step, min_value=1, step=step, key=f"{param}_step")
+                            step_val = st.number_input(f"{param} step", value=step, min_value=step, step=step, key=f"{param}_step")
+
                         import numpy as np
                         param_ranges[param] = list(np.arange(start_val, end_val + step_val, step_val).astype(int))
-                    else: # float
-                        step = 0.1
+
+                    else:  # float
+                        min_val = param_range.get('min', 0.001)
+                        max_val = param_range.get('max', float(default_value * 10))
+                        step = param_range.get('step', 0.001)
+
                         with col_start:
-                            start_val = st.number_input(f"{param} start", value=0.1, min_value=0.1, step=step, key=f"{param}_start")
+                            start_val = st.number_input(f"{param} start", value=min_val, min_value=min_val, step=step, key=f"{param}_start", format="%.4f")
                         with col_end:
-                            end_val = st.number_input(f"{param} end", value=float(default_value * 10), min_value=0.1, step=step, key=f"{param}_end")
+                            end_val = st.number_input(f"{param} end", value=max_val, min_value=min_val, step=step, key=f"{param}_end", format="%.4f")
                         with col_step:
-                            step_val = st.number_input(f"{param} step", value=step, min_value=0.1, step=step, key=f"{param}_step")
+                            step_val = st.number_input(f"{param} step", value=step, min_value=step, step=step, key=f"{param}_step", format="%.4f")
+
                         import numpy as np
-                        param_ranges[param] = list(np.arange(start_val, end_val + step_val, step_val))
-            else: # Not optimizing
+                        # Use linspace for float ranges to avoid precision issues
+                        param_ranges[param] = list(np.round(np.arange(start_val, end_val + step_val, step_val), 4))
+
+            else:  # Not optimizing
                 for param, default_value in strategy_info['params'].items():
+                    param_range = opt_ranges.get(param, {})
                     value = loaded_opt_params.get(param, default_value)
+
                     if isinstance(default_value, int):
-                        params[param] = st.number_input(f"Parameter: {param}", value=value, min_value=1, step=1)
-                    else: # float
-                        params[param] = st.number_input(f"Parameter: {param}", value=value, min_value=0.1, format="%.2f")
+                        min_val = param_range.get('min', 1)
+                        params[param] = st.number_input(f"Parameter: {param}", value=value, min_value=min_val, step=1)
+                    else:  # float
+                        min_val = param_range.get('min', 0.001)
+                        # Ensure value is not less than min_val
+                        display_value = max(float(value), min_val)
+                        params[param] = st.number_input(f"Parameter: {param}", value=display_value, min_value=min_val, step=0.001, format="%.4f")
         else:
             st.info("This strategy has no configurable parameters.")
 
