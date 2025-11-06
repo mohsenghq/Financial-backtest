@@ -53,7 +53,7 @@ def generate_strategy_code(prompt: str, model: str = "gemini-1.5-flash-latest", 
         "The strategy must:\n"
         "1. Inherit from backtesting.Strategy.\n"
         "2. Include a clear docstring.\n"
-        "3. Have configurable parameters.\n"
+        "3. Have configurable parameters and a classmethod get_optimization_ranges to returen min max and step like 'upper_bound': {'min': 60, 'max': 85, 'step': 5} of each parameter for optimization purpose.\n"
         "4. Implement init() and next() methods.\n"
         "5. Implement all technical indicators using finta if needed.\n"
         "6. from backtesting.lib import crossed_above, crossed_below is not valid. the lib just have crossover (Return `True` if `series1` just crossed over (above) `series2`.) and cross (Return True if series1 and series2 just crossed(above or below) each other.).\n"
