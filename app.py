@@ -234,7 +234,7 @@ with col1:
 
 with col2:
     st.subheader("4. Execute Backtest")
-    run_button = st.button("🚀 Run Backtest", type="primary", use_container_width=True)
+    run_button = st.button("🚀 Run Backtest", type="primary", width='stretch')
 
 # --- Execution Logic ---
 if run_button:
