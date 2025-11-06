@@ -28,6 +28,12 @@ class PriceLevelStrategy(Strategy):
     # --- Strategy Parameters ---
     lookback_period = 7  # Lookback period in bars (e.g., days)
 
+    @classmethod
+    def get_optimization_ranges(cls):
+        return {
+            'lookback_period': {'min': 5, 'max': 14, 'step': 3}
+        }
+
     def init(self):
         """
         Initialize the indicators for the dynamic price levels.
@@ -48,6 +54,10 @@ class PriceLevelStrategy(Strategy):
         self.level_50  = self.min_price + price_range * 0.50  # 50% level (midpoint)
         self.level_75  = self.min_price + price_range * 0.75  # 75% level
         self.level_100 = self.max_price                 # The maximum price
+        
+        # Initialize state variables
+        self.buyed = False
+        self.selled = False
 
     def next(self):
         """

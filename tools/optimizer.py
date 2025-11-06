@@ -1,5 +1,6 @@
 import json
 import os
+import pandas as pd
 from backtesting import Backtest
 
 class StrategyOptimizer:
@@ -16,6 +17,8 @@ class StrategyOptimizer:
         return {}
 
     def _save_optimized_params(self):
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(self.optimized_params_path), exist_ok=True)
         with open(self.optimized_params_path, 'w') as f:
             json.dump(self.optimized_params, f, indent=4)
 
@@ -34,7 +37,30 @@ class StrategyOptimizer:
             return_heatmap=True
         )
         best_params = stats._strategy._params
-        return best_params, heatmap
+        
+        # Convert heatmap Series to DataFrame for easier handling
+        heatmap_df = self._process_heatmap(heatmap, param_grid)
+        
+        return best_params, heatmap_df
+
+    def _process_heatmap(self, heatmap_series, param_grid):
+        """
+        Convert the heatmap Series to a proper DataFrame for HTML export.
+        """
+        if heatmap_series.empty:
+            return pd.DataFrame()
+            
+        # Convert Series to DataFrame
+        heatmap_df = heatmap_series.reset_index()
+        
+        # The Series has a MultiIndex for parameters and the performance metric as values
+        # Rename columns appropriately
+        if len(heatmap_df.columns) == len(param_grid) + 1:
+            # Name the performance column
+            performance_col = heatmap_df.columns[-1]
+            heatmap_df = heatmap_df.rename(columns={performance_col: 'Performance'})
+        
+        return heatmap_df
 
     def get_optimized_params(self, strategy_name, data_name):
         return self.optimized_params.get(strategy_name, {}).get(data_name)
@@ -44,3 +70,23 @@ class StrategyOptimizer:
             self.optimized_params[strategy_name] = {}
         self.optimized_params[strategy_name][data_name] = params
         self._save_optimized_params()
+
+    def save_heatmap_html(self, heatmap_df, filepath):
+        """
+        Save heatmap DataFrame as HTML file.
+        """
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        
+        if heatmap_df.empty:
+            print(f"Warning: Heatmap is empty, cannot save to {filepath}")
+            return
+            
+        # Create a styled HTML table
+        styled_df = heatmap_df.style.background_gradient(cmap='RdYlGn', axis=0)
+        
+        # Save as HTML
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(styled_df.to_html())
+        
+        print(f"Heatmap saved to: {filepath}")

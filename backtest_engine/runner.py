@@ -46,7 +46,7 @@ def run_backtest(
                 'Equity Final [$]': cash,
                 'Equity Peak [$]': cash,
                 'Return [%]': 0,
-                'Buy & Hold Return [%]': (data['Close'].iloc[-1] - data['Close'].iloc[0]) / data['Close'].iloc[0] * 100,
+                # 'Buy & Hold Return [%]': (data['Close'].iloc[-1] - data['Close'].iloc[0]) / data['Close'].iloc[0] * 100,
                 'Return (Ann.) [%]': 0,
                 'Volatility (Ann.) [%]': 0,
                 'Sharpe Ratio': 0,

@@ -122,7 +122,7 @@ else:
         
         # Define columns to display for clarity
         display_columns = [
-            'Return [%]', 'Buy & Hold Return [%]', 'Max. Drawdown [%]',
+            'Return [%]', 'Max. Drawdown [%]',
             'Sharpe Ratio', 'Calmar Ratio', '# Trades', 'Win Rate [%]'
         ]
         

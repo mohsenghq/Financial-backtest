@@ -17,7 +17,7 @@ st.write("Generate a new trading strategy using AI. Describe your strategy, sele
 
 # API Key Configuration (Hidden by default)
 with st.expander("🔑 API Key Configuration", expanded=False):
-    stored_api_key = st.session_state.get('google_api_key', '')
+    stored_api_key = st.session_state.get('GEMINI_API_KEY', '')
     api_key_input = st.text_input(
         "Google API Key",
         value=stored_api_key,
@@ -25,7 +25,7 @@ with st.expander("🔑 API Key Configuration", expanded=False):
         help="Enter your Google API key. Leave empty to use system environment variable."
     )
     if api_key_input:
-        st.session_state['google_api_key'] = api_key_input
+        st.session_state['GEMINI_API_KEY'] = api_key_input
 
 def generate_strategy_code(prompt: str, model: str = "gemini-1.5-flash-latest", temperature: float = 0.7) -> str:
     """
@@ -44,7 +44,7 @@ def generate_strategy_code(prompt: str, model: str = "gemini-1.5-flash-latest", 
         RuntimeError: If the API call fails.
     """
 
-    api_key = st.session_state.get("google_api_key") or os.getenv("GOOGLE_API_KEY")
+    api_key = st.session_state.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise ValueError("Google API key not found in Streamlit session_state or environment variable.")
 
@@ -55,7 +55,7 @@ def generate_strategy_code(prompt: str, model: str = "gemini-1.5-flash-latest", 
         "2. Include a clear docstring.\n"
         "3. Have configurable parameters.\n"
         "4. Implement init() and next() methods.\n"
-        "5. Implement all technical indicators yourself and don't use library.\n"
+        "5. Implement all technical indicators using finta if needed.\n"
         "6. from backtesting.lib import crossed_above, crossed_below is not valid. the lib just have crossover (Return `True` if `series1` just crossed over (above) `series2`.) and cross (Return True if series1 and series2 just crossed(above or below) each other.).\n"
         "IMPORTANT: The entire response must be only valid, raw Python code. Do not include markdown formatting or any explanatory text."
         "the strategy:\n"

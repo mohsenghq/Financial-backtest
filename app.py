@@ -5,11 +5,13 @@ import streamlit as st
 import os
 import importlib
 import inspect
-from main import run_backtests_from_config
+from tools.core import run_backtests_from_config
 import yaml
 import json
 import warnings
 warnings.filterwarnings("ignore")
+from dotenv import load_dotenv
+load_dotenv()
 
 # --- App Configuration ---
 st.set_page_config(

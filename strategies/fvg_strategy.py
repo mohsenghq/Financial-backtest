@@ -1,37 +1,25 @@
-
 import numpy as np
 from backtesting import Strategy
 from backtesting.lib import crossover
+from finta import TA
+import pandas as pd
 
 def atr_func(high: np.ndarray, low: np.ndarray, close: np.ndarray, n: int) -> np.ndarray:
     """
-    Calculates the Average True Range (ATR) indicator.
-    This is a custom implementation as required.
+    Calculates the Average True Range (ATR) indicator using finta.
     """
-
-    tr = np.full_like(close, np.nan)
-    atr = np.full_like(close, np.nan)
-
-    # Calculate True Range (TR)
-    # TR is the greatest of:
-    # 1. Current High - Current Low
-    # 2. abs(Current High - Previous Close)
-    # 3. abs(Current Low - Previous Close)
-    tr[1:] = np.maximum(high[1:] - low[1:],
-                      np.maximum(np.abs(high[1:] - close[:-1]),
-                                 np.abs(low[1:] - close[:-1])))
-
-    # Calculate initial ATR as a simple moving average of the first n TR values
-    if len(tr) >= n:
-        atr[n - 1] = np.nanmean(tr[1:n])
-
-        # Subsequent ATR values use Wilder's smoothing method (similar to EMA)
-        for i in range(n, len(tr)):
-            if not np.isnan(tr[i]):
-                atr[i] = (atr[i - 1] * (n - 1) + tr[i]) / n
-
-    return atr
-
+    # Create DataFrame with required columns for finta
+    ohlc_data = pd.DataFrame({
+        'open': np.zeros_like(close),
+        'high': high,
+        'low': low,
+        'close': close
+    })
+    
+    atr_values = TA.ATR(ohlc_data, period=n)
+    if atr_values is None:
+        return np.full_like(close, np.nan)
+    return atr_values.values
 
 class FVGStrategy(Strategy):
     """
@@ -66,11 +54,21 @@ class FVGStrategy(Strategy):
     fvg_expiry = 15  # FVG is considered valid for this many bars after creation
     risk_percentage = 0.02 # Max percentage of equity to risk per trade
 
+    @classmethod
+    def get_optimization_ranges(cls):
+        return {
+            'atr_period': {'min': 10, 'max': 20, 'step': 5},
+            'sl_atr_multiplier': {'min': 1.0, 'max': 3.0, 'step': 0.5},
+            'tp_atr_multiplier': {'min': 2.0, 'max': 6.0, 'step': 1.0},
+            'fvg_expiry': {'min': 10, 'max': 30, 'step': 5},
+            'risk_percentage': {'min': 0.01, 'max': 0.05, 'step': 0.01}
+        }
+
     def init(self):
         """
         Initialize the strategy, indicators, and state variables.
         """
-        # Calculate ATR using the custom implementation
+        # Calculate ATR using finta
         self.atr = self.I(atr_func, self.data.High, self.data.Low, self.data.Close, self.atr_period)
 
         # List to store active FVG dictionaries
@@ -170,9 +168,13 @@ class FVGStrategy(Strategy):
                     sl = entry_price - sl_distance
                     tp = entry_price + (self.atr[-1] * self.tp_atr_multiplier)
 
-                    # Ensure SL and TP are positive
+                    # Ensure SL and TP are positive and valid
                     sl = max(1e-6, sl)
                     tp = max(1e-6, tp)
+                    
+                    # Ensure TP is above entry for long positions
+                    if tp <= entry_price:
+                        tp = entry_price * 1.01
 
                     # Calculate position size based on risk percentage
                     risk_amount = self.equity * self.risk_percentage
@@ -219,9 +221,13 @@ class FVGStrategy(Strategy):
                     sl = entry_price + sl_distance
                     tp = entry_price - (self.atr[-1] * self.tp_atr_multiplier)
 
-                    # Ensure SL and TP are positive
+                    # Ensure SL and TP are positive and valid
                     sl = max(1e-6, sl)
                     tp = max(1e-6, tp)
+                    
+                    # Ensure TP is below entry for short positions
+                    if tp >= entry_price:
+                        tp = entry_price * 0.99
 
                     # Calculate position size based on risk percentage
                     risk_amount = self.equity * self.risk_percentage

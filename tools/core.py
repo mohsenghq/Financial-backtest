@@ -65,8 +65,9 @@ def run_backtests_from_config(config: dict, log_callback=print):
 
                 if optimize:
                     log_callback(f"Optimizing {strategy_name} on {asset_name}...")
-                    best_params, heatmap = optimizer.optimize(param_ranges)
-                    heatmap.to_html(os.path.join("results" + strategy_name + "/" + asset_name, "heatmap.html"))
+                    best_params, heatmap_df = optimizer.optimize(param_ranges)
+                    heatmap_path = os.path.join(f"results/{strategy_name}/{asset_name}", "heatmap.html")
+                    optimizer.save_heatmap_html(heatmap_df, heatmap_path)
                     optimizer.set_optimized_params(strategy_name, asset_name, best_params)
                     params = best_params
                 else:
